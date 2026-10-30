@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#241d32"><title>君と紡ぐ三叉路 | HARD MODE</title>
+<style>
+:root{color-scheme:dark;--bg:#171522;--panel:#242033;--ink:#f8f3ff;--muted:#bcb3cc;--pink:#ef9ebc;--blue:#9dbce9;--gold:#f0d49a}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#45304a 0,#211d30 45%,#151421 100%);color:var(--ink);font-family:system-ui,-apple-system,"Noto Sans JP",sans-serif;line-height:1.75}
+main{width:min(760px,calc(100% - 28px));margin:32px auto 60px}.hero{text-align:center;padding:18px 8px 24px}.eyebrow{letter-spacing:.22em;color:var(--pink);font-size:.78rem}.hero h1{font-size:clamp(1.65rem,5vw,2.55rem);margin:8px 0}.hero p{color:var(--muted);margin:0}
+.panel{background:#242033eF;border:1px solid #ffffff20;border-radius:20px;padding:clamp(18px,4vw,30px);box-shadow:0 18px 55px #08061170}
+.topline{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:.9rem}.chapter{color:var(--gold);font-weight:700}.progress{height:7px;background:#494257;border-radius:99px;overflow:hidden;margin:12px 0 24px}.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--gold));transition:width .25s}
+h2{font-size:1.4rem;margin:0 0 8px}.desc{color:#e4ddec;margin:0 0 22px}.dialogue{padding:14px 16px;border-radius:13px;margin:12px 0;background:#ffffff09;border-left:3px solid var(--pink)}.dialogue.ao{border-left-color:var(--blue)}.speaker{font-size:.8rem;color:var(--pink);font-weight:700}.ao .speaker{color:var(--blue)}.dialogue p{margin:4px 0 0}
+.mission{margin:20px 0;padding:14px 16px;border-radius:12px;background:#f0d49a12;border:1px solid #f0d49a44}.mission b{color:var(--gold)}.hint{font-size:.88rem;color:var(--muted)}
+.choices{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}button{font:inherit;cursor:pointer;border:1px solid #ffffff30;border-radius:12px;padding:13px 16px;color:var(--ink);background:#3a3049;transition:transform .15s,border-color .15s}button:hover{transform:translateY(-2px);border-color:var(--pink)}button:disabled{opacity:.5;cursor:wait}.choice-y{border-color:#d48da9;background:#75465f55}.choice-a{border-color:#8eaddb;background:#3d587955}.secondary{background:transparent;color:var(--muted);font-size:.9rem}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.stat{background:#ffffff08;padding:13px;border-radius:12px}.stat strong{display:block}.hearts{color:var(--pink);letter-spacing:.08em;overflow-wrap:anywhere}.trust{color:var(--gold)}.feedback{margin-top:18px;padding:18px;background:#ffffff0b;border-radius:14px}.feedback h3{margin:0 0 8px}.feedback p{margin:6px 0}.meme{color:var(--gold);font-size:.9rem;margin:10px 0}.hidden{display:none}.footer{text-align:center;color:var(--muted);font-size:.8rem;margin:18px}
+@media(max-width:560px){.choices,.stats{grid-template-columns:1fr}main{margin-top:14px}.panel{border-radius:16px}}
+</style></head>
+<body><main>
+<header class="hero"><div class="eyebrow">A STORY OF THREE PATHS</div><h1>君と紡ぐ三叉路</h1><p>BL版・HARD MODE　｜　全20話</p></header>
+<section class="panel">
+<div id="game">
+<div class="topline"><span class="chapter" id="chapter">第01話</span><span id="saved">この端末にセーブ</span></div><div class="progress"><span id="bar" style="width:0%"></span></div>
+<h2 id="title">読み込み中…</h2><p class="desc" id="desc"></p>
+<div class="dialogue"><div class="speaker">悠真</div><p id="y"></p></div><div class="dialogue ao"><div class="speaker">蒼</div><p id="a"></p></div>
+<div id="meme" class="meme"></div>
+<div class="mission"><b>今回の任務</b><div id="mission"></div><div class="hint" id="hint"></div></div>
+<strong>誰と過ごす？</strong><div class="choices"><button class="choice-y" id="chooseY">悠真と過ごす</button><button class="choice-a" id="chooseA">蒼と過ごす</button></div>
+</div>
+<div id="feedback" class="feedback hidden" aria-live="polite"></div>
+<div class="stats"><div class="stat"><strong>悠真</strong><span class="hearts" id="ya"></span><small id="yt" class="trust"></small></div><div class="stat"><strong>蒼</strong><span class="hearts" id="aa"></span><small id="at" class="trust"></small></div></div>
+<div class="topline" style="margin-top:14px"><span id="missionCount">任務 0/20</span><span id="chapterCount">進行 0/20</span></div>
+<div id="ending" class="feedback hidden" aria-live="polite"></div>
+<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:18px"><button class="secondary" id="next" disabled>次の話へ →</button><button class="secondary" id="reset">最初から</button></div>
+</section><p class="footer">進行状況はブラウザ内に保存されます。別の端末・ブラウザとは共有されません。</p>
+</main>
+<script>
+const API="/api";
+const fresh=()=>({chapter:0,aff:{悠真:0,蒼:0},trust:{悠真:5,蒼:5},last:null,streak:0,missions:[],history:[]});
+let state=fresh(),pending=false;
+const $=id=>document.getElementById(id);
+function persist(){localStorage.setItem("koimemori-koi10-save",JSON.stringify(state));}
+function renderStats(){
+ for(const [name,key] of [["悠真","y"],["蒼","a"]]){
+  $(key+"a").textContent="♥".repeat(state.aff[name])+"♡".repeat(20-state.aff[name])+"  "+state.aff[name]+"/20";
+  $(key+"t").textContent="信頼度 "+state.trust[name]+"/10";
+ }
+ $("missionCount").textContent="任務 "+state.missions.length+"/20";
+ $("chapterCount").textContent="進行 "+state.chapter+"/20";
+}
+async function loadScene(){
+ $("feedback").classList.add("hidden");$("next").disabled=true;
+ if(state.chapter>=20){showEnding();return;}
+ const r=await fetch(API+"/scene/"+state.chapter);if(!r.ok)throw Error("シーンを読み込めませんでした");
+ const s=await r.json();
+ $("chapter").textContent="第"+String(state.chapter+1).padStart(2,"0")+"話";
+ $("bar").style.width=(state.chapter/20*100)+"%";
+ $("title").textContent=s.title;$("desc").textContent=s.desc;$("y").textContent=s.y;$("a").textContent=s.a;
+ $("mission").textContent=s.mission;$("hint").textContent="達成ヒント："+s.mission_hint;
+ $("meme").textContent=s.meme?"【謎の語録タイム】"+s.meme:"";
+ $("game").classList.remove("hidden");$("ending").classList.add("hidden");
+ $("chooseY").disabled=$("chooseA").disabled=false;renderStats();
+}
+async function choose(choice){
+ if(pending)return;pending=true;$("chooseY").disabled=$("chooseA").disabled=true;
+ try{
+  const r=await fetch(API+"/choose",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({chapter:state.chapter,choice,state})});
+  const result=await r.json();if(!r.ok)throw Error(result.detail||"選択を保存できませんでした");
+  state=result.state;persist();renderStats();
+  $("feedback").classList.remove("hidden");
+  $("feedback").innerHTML="";
+  const h=document.createElement("h3");h.textContent=result.target+"を選択";$("feedback").append(h);
+  const p=document.createElement("p");p.textContent=result.reaction;$("feedback").append(p);
+  const m=document.createElement("p");m.textContent=result.mission_completed?"【任務達成】信頼度 +1":"【任務失敗】今回は任務を達成できなかった…";$("feedback").append(m);
+  if(result.hard_note){const n=document.createElement("p");n.textContent="【HARD】"+result.hard_note;$("feedback").append(n);}
+  $("bar").style.width=(state.chapter/20*100)+"%";$("game").classList.add("hidden");
+  if(result.ending){showEnding(result.ending);$("next").disabled=true;}
+  else{$("next").disabled=false;$("next").textContent="次の話へ →";}
+ }catch(e){alert(e.message);$("chooseY").disabled=$("chooseA").disabled=false;}
+ finally{pending=false;}
+}
+function showEnding(end){
+ $("game").classList.add("hidden");$("ending").classList.remove("hidden");
+ const y=state.aff.悠真,a=state.aff.蒼,yt=state.trust.悠真,at=state.trust.蒼;
+ const title=end?.title||"物語の終わり";
+ const rank=end?.rank||"";
+ const text=end?.text||"二人と過ごした20話の思い出を振り返ろう。";
+ $("ending").innerHTML="";
+ const h=document.createElement("h2");h.textContent="★ "+title+" ★";$("ending").append(h);
+ const rankP=document.createElement("p");rankP.textContent=rank;$("ending").append(rankP);
+ const p=document.createElement("p");p.textContent=text;$("ending").append(p);
+ const score=document.createElement("p");score.textContent="好感度：悠真 "+y+"/20 ／ 蒼 "+a+"/20";$("ending").append(score);
+ const trust=document.createElement("p");trust.textContent="信頼度：悠真 "+yt+"/10 ／ 蒼 "+at+"/10";$("ending").append(trust);
+ $("bar").style.width="100%";
+}
+$("chooseY").addEventListener("click",()=>choose(0));$("chooseA").addEventListener("click",()=>choose(1));
+$("next").addEventListener("click",()=>loadScene().catch(e=>alert(e.message)));
+$("reset").addEventListener("click",()=>{if(confirm("セーブデータを消して最初から始めますか？")){state=fresh();persist();loadScene().catch(e=>alert(e.message));}});
+try{const saved=localStorage.getItem("koimemori-koi10-save");if(saved){const parsed=JSON.parse(saved);if(parsed&&Number.isInteger(parsed.chapter)&&parsed.chapter>=0&&parsed.chapter<=20)state={...fresh(),...parsed};}}catch{}
+renderStats();loadScene().catch(e=>{ $("title").textContent="読み込みエラー";$("desc").textContent=e.message;});
+</script></body></html>
