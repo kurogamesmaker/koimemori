@@ -1,21 +1,28 @@
 from typing import Literal
 import random
-from fastapi import FastAPI, HTTPException\nfrom fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from koi10 import SCENES, NAMES, MAX_AFF, MAX_TRUST, MEMES, fresh_state, clamp, mission_success, update_relationship
 
-app = FastAPI(title="君と紡ぐ三叉路 API", version="1.0.0")\n\n@app.get("/")\ndef home():\n    return FileResponse("index.html", media_type="text/html; charset=utf-8")
+app = FastAPI(title="君と紡ぐ三叉路 API", version="1.0.0")
+
+@app.get("/")
+def home():
+    return FileResponse("index.html", media_type="text/html; charset=utf-8")
 
 class ChoiceInput(BaseModel):
     chapter: int = Field(ge=0, lt=len(SCENES))
     choice: Literal[0, 1]
     state: dict
 
-@app.get("/api/game")\n@app.get("/game")
+@app.get("/api/game")
+@app.get("/game")
 def game_info():
     return {"title": "君と紡ぐ三叉路 BL版・HARD MODE", "chapters": len(SCENES)}
 
-@app.get("/api/scene/{chapter}")\n@app.get("/scene/{chapter}")
+@app.get("/api/scene/{chapter}")
+@app.get("/scene/{chapter}")
 def get_scene(chapter: int):
     if chapter < 0 or chapter >= len(SCENES):
         raise HTTPException(status_code=404, detail="この話は見つかりません")
@@ -31,7 +38,8 @@ def get_scene(chapter: int):
         "meme": random.choice(MEMES) if random.random() < 0.35 else None,
     }
 
-@app.post("/api/choose")\n@app.post("/choose")
+@app.post("/api/choose")
+@app.post("/choose")
 def choose(data: ChoiceInput):
     state = fresh_state()
     incoming = data.state or {}
